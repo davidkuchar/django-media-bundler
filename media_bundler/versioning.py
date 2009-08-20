@@ -73,13 +73,19 @@ class VersioningError(Exception):
 
 class VersioningBase(object):
 
-    def __init__(self):
+    def __init__(self, purge=False):
+        self.purge = purge
         self.versions = get_bundle_versions().copy()
 
     def get_version(self, source_files):
         raise NotImplementedError
 
     def update_bundle_version(self, bundle):
+        """
+        Updates the bundle version.
+        
+        If ``purge`` is ``True``, the prior version will be deleted.
+        """
         version = self.get_version(bundle)
         orig_path = bundle.get_bundle_path()
         dir, basename = os.path.split(orig_path)
@@ -88,9 +94,14 @@ class VersioningBase(object):
             versioned_basename = '.'.join((name, version, extension))
         else:
             versioned_basename += '.' + version
+        prior_version = self.versions.get(bundle.name, None)
         self.versions[bundle.name] = versioned_basename
         versioned_path = os.path.join(dir, versioned_basename)
+        if os.path.join(dir, prior_version) == versioned_path:
+            prior_version = None
         shutil.copy(orig_path, versioned_path)
+        if self.purge and prior_version is not None:
+            os.remove(os.path.join(dir, prior_version))
 
 
 class MtimeVersioning(VersioningBase):
@@ -102,8 +113,8 @@ class MtimeVersioning(VersioningBase):
 
 class HashVersioningBase(VersioningBase):
 
-    def __init__(self, hash_method):
-        super(HashVersioningBase, self).__init__()
+    def __init__(self, hash_method, purge=False):
+        super(HashVersioningBase, self).__init__(purge=purge)
         self.hash_method = hash_method
 
     def get_version(self, bundle):
@@ -123,14 +134,14 @@ class HashVersioningBase(VersioningBase):
 
 class Md5Versioning(HashVersioningBase):
 
-    def __init__(self):
-        super(Md5Versioning, self).__init__(md5)
+    def __init__(self, purge=False):
+        super(Md5Versioning, self).__init__(md5, purge=purge)
 
 
 class Sha1Versioning(HashVersioningBase):
 
-    def __init__(self):
-        super(Sha1Versioning, self).__init__(sha1)
+    def __init__(self, purge=False):
+        super(Sha1Versioning, self).__init__(sha1, purge=purge)
 
 
 VERSIONERS = {
