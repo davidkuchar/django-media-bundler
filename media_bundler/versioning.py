@@ -97,7 +97,7 @@ class VersioningBase(object):
         prior_version = self.versions.get(bundle.name, None)
         self.versions[bundle.name] = versioned_basename
         versioned_path = os.path.join(dir, versioned_basename)
-        if os.path.join(dir, prior_version) == versioned_path:
+        if prior_version is not None and os.path.join(dir, prior_version) == versioned_path:
             prior_version = None
         shutil.copy(orig_path, versioned_path)
         if self.purge and prior_version is not None:
